@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 # 自定义模块
-from utils_xhy import *
+from utils import *
 
 
 class UNet2D(nn.Module):
