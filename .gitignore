@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+# data and model weights are distributed separately (see README)
+weights/*.pth
+weights/*.pt
+results/
+*.nii
+*.nii.gz
+*.nrrd
+.DS_Store
+.idea/
+.vscode/

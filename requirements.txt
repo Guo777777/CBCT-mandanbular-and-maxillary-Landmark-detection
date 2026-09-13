@@ -1,0 +1,11 @@
+# core (inference)
+torch>=1.10
+numpy
+scipy
+SimpleITK
+scikit-image
+# training only
+batchgenerators>=0.25
+tqdm
+# scripts/0_standardize_case_names.py only (Chinese folder names -> pinyin)
+pypinyin

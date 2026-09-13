@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cbct-landmark"
+version = "1.0.0"
+description = "Two-stage 3D U-Net landmark detection on CBCT for basal bone width measurement"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = ["torch>=1.10", "numpy", "scipy", "SimpleITK", "scikit-image"]
+
+[project.optional-dependencies]
+train = ["batchgenerators>=0.25", "tqdm", "pypinyin"]
+
+[tool.setuptools.packages.find]
+include = ["cbct_landmark*"]
