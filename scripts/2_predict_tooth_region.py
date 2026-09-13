@@ -36,7 +36,7 @@ def collect_cases(args):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--data-dir', required=True)
-    ap.add_argument('--ckpt', required=True, help='tooth-region checkpoint (bestmodel.pth)')
+    ap.add_argument('--ckpt', required=True, help='tooth-region checkpoint, UNet3D_simple state_dict (train your own; the paper weights are lost)')
     ap.add_argument('--out-dir', required=True)
     ap.add_argument('--lists', nargs='*', default=None, help='train.txt valid.txt test.txt (default: every case folder)')
     ap.add_argument('--size', type=int, default=72)

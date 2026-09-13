@@ -3,7 +3,7 @@ __pycache__/
 *.egg-info/
 build/
 dist/
-# data and model weights are distributed separately (see README)
+# data and self-trained checkpoints are not tracked (see README)
 weights/*.pth
 weights/*.pt
 results/

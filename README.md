@@ -17,7 +17,8 @@ centre of the root bifurcation) and reports the maxillary width |L1-L2| and mand
 > folder (`four_point_save_128`) was produced by code that was commented out. This release puts
 > the model code in an importable package, turns every step into a CLI script, adds a single-scan
 > `inference.py`, documents the exact preprocessing, and moves the experimental scripts to
-> [`legacy/`](legacy/). Network class / parameter names are unchanged so the original checkpoints load.
+> [`legacy/`](legacy/). Network class / parameter names are unchanged from the original code.
+> **The paper's trained weights could not be recovered and are not available**, see [Pretrained weights](#pretrained-weights).
 > See [File map](#file-map-original--re-organised) for where each old file went.
 
 ---
@@ -55,7 +56,7 @@ flowchart LR
 | class | `cbct_landmark.models.UNet3D_simple` (was `UNet_xhy.UNet3D_simple`) | `cbct_landmark.models.UNet3d` (was `UNet.UNet3d`) |
 | input | whole CBCT resampled to **72×72×72** | tooth ROI resampled to **128×128×128** |
 | output | sigmoid mask, threshold 0.5 | sigmoid heat-map, **1 channel** containing all 4 landmarks |
-| checkpoint | `tooth_best_model/bestmodel.pth` (plain `state_dict`) | `UNet3d_stage1/Unet_model08.pt` (`{'epoch','state_dict','optimizer_state_dict'}`) |
+| original checkpoint (lost, see [Pretrained weights](#pretrained-weights)) | `tooth_best_model/bestmodel.pth` (plain `state_dict`) | `UNet3d_stage1/Unet_model08.pt` (`{'epoch','state_dict','optimizer_state_dict'}`) |
 | parameters | 19.1 M (incl. two unused blocks, see below) | 16.3 M |
 
 Paper results on the 34 test scans: mean radial error 2.00 ± 2.46 mm (L1 2.09, L2 2.30, L3 1.60,
@@ -82,7 +83,7 @@ cbct_landmark/                  importable package
 scripts/                        one CLI per pipeline step (0 … 6), see "Reproducing the paper"
 inference.py                    single-scan end-to-end inference
 tests/test_synthetic_roundtrip.py   consistency test, needs no data or weights
-weights/                        put the two checkpoints here (git-ignored)
+weights/                        git-ignored folder for checkpoints you train yourself
 legacy/                         original experimental scripts, verbatim, with a README
 ```
 
@@ -104,7 +105,7 @@ legacy/                         original experimental scripts, verbatim, with a 
 | `3_test.py` | `scripts/5_test_landmark.py` |
 | evaluation part of `json_process_test0.py` / `json_process_test2.py` | `scripts/6_evaluate.py` |
 | `json_process.py`, `json_process_test1.py`, `json_process_based_on_nibabel.py`, `json_origin_explain.py`, `image_process.py`, `zoom_in_tooth_image.py`, `sort_landmark.py`, `whole_heatmap_save.py`, `result_process.py`, `transform_to_nii.py` | `legacy/` (unchanged, see [`legacy/README.md`](legacy/README.md)) |
-| `tooth_best_model/bestmodel.pth`, `UNet3d_stage1/Unet_model08.pt` | never in git; see [Pretrained weights](#pretrained-weights) |
+| `tooth_best_model/bestmodel.pth`, `UNet3d_stage1/Unet_model08.pt` | never in git and **no longer available**; see [Pretrained weights](#pretrained-weights) |
 
 ## Installation
 
@@ -121,20 +122,33 @@ experiments used an NVIDIA A100. Any PyTorch ≥ 1.10 should work.
 
 ## Pretrained weights
 
-The paper's checkpoints were **not** part of the first upload of this repository (they lived on
-the lab server as `model/tooth_best_model/bestmodel.pth` and `model/UNet3d_stage1/Unet_model08.pt`).
-They are distributed separately and should be placed in [`weights/`](weights/):
+**The trained weights are no longer available.** The two checkpoints used for the paper
+(`model/tooth_best_model/bestmodel.pth` for stage 1 and `model/UNet3d_stage1/Unet_model08.pt`
+for stage 2) were stored only on the lab server, were never committed to this repository, and
+were not archived before that storage was cleared. We have searched our remaining machines and
+cannot recover them, so we are unable to share them. We apologise to anyone who hoped to run the
+published model directly.
 
-| file in `weights/` | stage | network | download |
-|---|---|---|---|
-| `tooth_region_bestmodel.pth` | 1, tooth-region mask | `UNet3D_simple(n_class=1)` | *GitHub release asset — link to be added* |
-| `landmark_Unet_model08.pt` | 2, landmark heat-map | `UNet3d(n_class=1, act='relu')` | *GitHub release asset — link to be added* |
+What this means in practice:
 
-`cbct_landmark.models.load_checkpoint()` accepts both the plain `state_dict` format (stage 1)
-and the `{'epoch','state_dict','optimizer_state_dict'}` format (stage 2).
-The weights are released for non-commercial academic research; please cite the paper.
+* The numbers in the paper cannot be re-run; the *method* can, by retraining on your own annotated
+  CBCT data with the scripts in this repository (see [Reproducing the paper](#reproducing-the-paper-training)).
+* `inference.py`, `scripts/2_predict_tooth_region.py` and `scripts/5_test_landmark.py` take the
+  checkpoints you train yourself. `weights/` is a git-ignored folder you can put them in; any path works.
+* **Stage 2** (landmark heat-map network) is fully covered: `scripts/3_crop_tooth_roi.py` builds the
+  128³ ROIs and heat-map labels from four 3D Slicer fiducials per case, `scripts/4_train_landmark.py`
+  trains `UNet3d`. It needs a coarse tooth mask per case as input (72³ binary, `<case>_pred.nii.gz`).
+* **Stage 1** (tooth-region mask) has no training script here (it never existed in this code base).
+  Any coarse segmentation of the dentition resampled to 72³ can stand in, e.g. a binary 3-D U-Net
+  (`UNet3D_simple` in this package, or nnU-Net) trained on tooth masks; the crop step only uses the
+  mask's bounding box dilated by 10 voxels.
+
+`cbct_landmark.models.load_checkpoint()` accepts both a plain `state_dict` and the
+`{'epoch','state_dict','optimizer_state_dict'}` dict written by `scripts/4_train_landmark.py`.
 
 ## Inference on new CBCT scans
+
+Requires a stage-1 and a stage-2 checkpoint trained by you (the paper's weights are not available).
 
 ```bash
 python inference.py \
@@ -213,7 +227,9 @@ python scripts/6_evaluate.py --pred-dir $DATA/test_save --roi-dir $DATA/four_poi
 Every script has `--help`. The **stage-1 training script is not part of this repository**: the
 tooth-region model was trained separately as a standard binary 3-D U-Net segmentation task on
 72³ volumes with tooth masks and only its checkpoint was used by the landmark pipeline. Steps 2–6
-and `inference.py` reproduce the published pipeline given the two checkpoints.
+and `inference.py` reproduce the published pipeline given two checkpoints; since the original
+weights are lost, step 2 needs a tooth-region model you train yourself (or coarse tooth masks from
+any other method, saved as 72³ `<case>_pred.nii.gz`).
 
 ## Preprocessing and post-processing details
 
@@ -270,11 +286,15 @@ blobs (the training label is the voxel-wise maximum of the four individual heat-
 `LandmarkROIDataset`). The four landmarks are separated afterwards by connected-component analysis
 (threshold 0.1, 4 largest components) and named from their positions. If you want a 4-channel model,
 set `n_class=4` in `build_local_net`, write one heat-map file per landmark in a fixed order and
-stack them instead of max-merging in `LandmarkROIDataset.__getitem__`; the released checkpoint is 1-channel.
+stack them instead of max-merging in `LandmarkROIDataset.__getitem__`.
 
 **`UNet3D_simple` builds `down_tr512` / `up_tr256` but never uses them. Bug?**
-Intentional leftover of the original code: the blocks exist (with random, untrained parameters)
-in the checkpoint, so they must exist in the class for `load_state_dict(strict=True)`.
+Leftover of the original code, kept so that the class matches the architecture that was trained;
+the unused blocks simply hold untrained parameters. You may remove them if you train from scratch.
+
+**Where are `bestmodel.pth` and `Unet_model08.pt`?**
+Lost, see [Pretrained weights](#pretrained-weights). They were never in this repository and the
+only copies were on a lab server whose storage has since been cleared.
 
 **Which `target_size` is right: `(144, 72, 40)` in the old training script or 128³?**
 128³. `(144, 72, 40)` was passed to a dataset whose resampling had been commented out, so it had
@@ -288,7 +308,7 @@ The model is 3-D only.
 
 * Paper: learning-rate decay 0.95 per epoch, early-stopping patience 10, augmentation "mirroring,
   rotation and contrast". Released code: `StepLR(step 40, gamma 0.9)`, patience 15, rotation
-  transform defined but disabled (`--rotation` re-enables it). The checkpoint was produced by the
+  transform defined but disabled (`--rotation` re-enables it). The paper's model was produced by the
   code as released.
 * The original post-processing sorted the four centroids by `z + y` index and the evaluation matched
   predicted to ground-truth *distances* by closest value; the re-organised code assigns L1..L4
